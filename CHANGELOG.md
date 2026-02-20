@@ -1,5 +1,19 @@
 # @marcfargas/pi-test-harness
 
+## 0.4.1
+
+### Patch Changes
+
+- [`58693d2`](https://github.com/marcfargas/pi-test-harness/commit/58693d2bab91651fe647dffe740643ab3af13cbf) Thanks [@marcfargas](https://github.com/marcfargas)! - Address code review findings for v0.4.0 standalone release.
+
+  - **Breaking**: Remove deprecated `call()`/`say()` DSL aliases (use `calls()`/`says()` instead)
+  - Fix diagnostic messages to reference current `calls()`/`says()` API names
+  - Fix release workflow for npm Trusted Publishers (`--provenance`)
+  - Record all mock UI method calls for assertion consistency (`setFooter`, `setHeader`, etc.)
+  - Scope playbook `toolCallCounter` to factory closure for concurrency safety
+  - Add `verifySandboxInstall()` test suite (4 tests with dummy extension fixture)
+  - Update package description to mention all three test layers
+
 ## 0.4.0
 
 ### Minor Changes
