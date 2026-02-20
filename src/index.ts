@@ -8,9 +8,6 @@
 // DSL builders
 export { when, calls, says } from "./playbook.js";
 
-// Deprecated aliases (remove in v0.4)
-export { call, say } from "./playbook.js";
-
 // Session
 export { createTestSession } from "./session.js";
 

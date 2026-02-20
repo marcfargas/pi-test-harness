@@ -1,7 +1,7 @@
 {
   "name": "@marcfargas/pi-test-harness",
   "version": "0.4.0",
-  "description": "Test harness for pi extensions — playbook-based model mocking, session testing, sandbox install verification",
+  "description": "Test harness for pi extensions — in-process session testing, package install verification, and subprocess mocking",
   "author": "Marc Fargas",
   "license": "MIT",
   "type": "module",

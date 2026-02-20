@@ -6,12 +6,12 @@ import type { PlaybookAction } from "./types.js";
 
 function formatAction(action: PlaybookAction): string {
 	if (action.type === "say") {
-		return `say("${action.text?.slice(0, 60)}${(action.text?.length ?? 0) > 60 ? "..." : ""}")`;
+		return `says("${action.text?.slice(0, 60)}${(action.text?.length ?? 0) > 60 ? "..." : ""}")`;
 	}
 	if (action.type === "call") {
 		const params = typeof action.params === "function" ? "<late-bound>" : JSON.stringify(action.params);
 		const truncated = params.length > 80 ? params.slice(0, 80) + "..." : params;
-		return `call("${action.toolName}", ${truncated})`;
+		return `calls("${action.toolName}", ${truncated})`;
 	}
 	return `unknown(${action.type})`;
 }

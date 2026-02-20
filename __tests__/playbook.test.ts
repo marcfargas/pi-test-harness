@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createPlaybookStreamFn, when, calls, says, call, say } from "../src/playbook.js";
+import { createPlaybookStreamFn, when, calls, says } from "../src/playbook.js";
 import type { Model, Context } from "@mariozechner/pi-ai";
 
 function mockModel(): Model<any> {
@@ -73,15 +73,6 @@ describe("when/calls/says DSL", () => {
 		expect(turn.actions[2].type).toBe("say");
 	});
 
-	it("deprecated call/say aliases still work", () => {
-		const turn = when("legacy", [
-			call("bash", { command: "ls" }),
-			say("done"),
-		]);
-		expect(turn.actions).toHaveLength(2);
-		expect(turn.actions[0].type).toBe("call");
-		expect(turn.actions[1].type).toBe("say");
-	});
 });
 
 describe("PlaybookStreamFn", () => {

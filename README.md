@@ -1,6 +1,6 @@
 # @marcfargas/pi-test-harness
 
-Test harness for [pi](https://github.com/mariozechner/pi-coding-agent) extensions — playbook-based model mocking with real extension execution.
+Test harness for [pi](https://github.com/mariozechner/pi-coding-agent) extensions — in-process session testing with playbook-driven model mocking, package install verification, and subprocess mocking.
 
 ## Why
 

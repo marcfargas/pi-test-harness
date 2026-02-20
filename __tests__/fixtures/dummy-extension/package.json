@@ -1,0 +1,9 @@
+{
+  "name": "@test/dummy-extension",
+  "version": "0.0.1",
+  "type": "module",
+  "pi": {
+    "extensions": ["extension.js"]
+  },
+  "files": ["extension.js"]
+}

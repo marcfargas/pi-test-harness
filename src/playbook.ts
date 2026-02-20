@@ -52,16 +52,6 @@ export function says(text: string): PlaybookAction {
 }
 
 /**
- * @deprecated Use `calls()` instead. Will be removed in v0.4.
- */
-export const call = calls;
-
-/**
- * @deprecated Use `says()` instead. Will be removed in v0.4.
- */
-export const say = says;
-
-/**
  * Define one user→model turn.
  * @param prompt The actual user prompt text
  * @param actions What the model does in response (call/say sequence)
@@ -75,21 +65,18 @@ export function when(prompt: string, actions: Array<CallAction | PlaybookAction>
 
 // ── PlaybookStreamFn ────────────────────────────────────────
 
-let toolCallCounter = 0;
-
 function resolveParams(params: Record<string, unknown> | (() => Record<string, unknown>) | undefined): Record<string, unknown> {
 	if (!params) return {};
 	if (typeof params === "function") return params();
 	return params;
 }
 
-function createAssistantMessage(action: PlaybookAction): AssistantMessage {
+function createAssistantMessage(action: PlaybookAction, toolCallCounter: number): AssistantMessage {
 	const content: AssistantMessage["content"] = [];
 
 	if (action.type === "say") {
 		content.push({ type: "text", text: action.text ?? "" });
 	} else if (action.type === "call") {
-		toolCallCounter++;
 		const resolvedParams = resolveParams(action.params);
 		content.push({
 			type: "toolCall",
@@ -144,8 +131,7 @@ export function createPlaybookStreamFn(turns: Turn[]): {
 		pendingCallbacks: new Map(),
 	};
 
-	// Reset counter for test isolation
-	toolCallCounter = 0;
+	let toolCallCounter = 0;
 
 	const streamFn = (
 		_model: Model<any>,
@@ -178,7 +164,8 @@ export function createPlaybookStreamFn(turns: Turn[]): {
 		state.remaining = queue.length;
 		state.consumedActions.push(action);
 
-		const message = createAssistantMessage(action);
+		if (action.type === "call") toolCallCounter++;
+		const message = createAssistantMessage(action, toolCallCounter);
 
 		// Register callback if present (keyed by tool call ID for uniqueness)
 		if (action.type === "call" && action.thenCallback) {

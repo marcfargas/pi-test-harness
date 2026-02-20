@@ -96,8 +96,12 @@ export function createMockUIContext(config: MockUIConfig = {}, uiLog: UICallReco
 			record("setWidget", [key, content]);
 		},
 
-		setFooter(): void {},
-		setHeader(): void {},
+		setFooter(...args: unknown[]): void {
+			record("setFooter", args);
+		},
+		setHeader(...args: unknown[]): void {
+			record("setHeader", args);
+		},
 
 		setTitle(title: string): void {
 			record("setTitle", [title]);
@@ -107,10 +111,16 @@ export function createMockUIContext(config: MockUIConfig = {}, uiLog: UICallReco
 			return undefined as never;
 		},
 
-		pasteToEditor(): void {},
-		setEditorText(): void {},
+		pasteToEditor(...args: unknown[]): void {
+			record("pasteToEditor", args);
+		},
+		setEditorText(...args: unknown[]): void {
+			record("setEditorText", args);
+		},
 		getEditorText(): string { return ""; },
-		setEditorComponent(): void {},
+		setEditorComponent(...args: unknown[]): void {
+			record("setEditorComponent", args);
+		},
 
 		get theme(): any {
 			// Return a minimal theme stub
