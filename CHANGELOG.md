@@ -1,5 +1,53 @@
 # @marcfargas/pi-test-harness
 
+## 0.5.0
+
+### Minor Changes
+
+- [#3](https://github.com/marcfargas/pi-test-harness/pull/3) [`225e123`](https://github.com/marcfargas/pi-test-harness/commit/225e123ce6ce2790f739aa3083ad1add3f09e752) Thanks [@marcfargas](https://github.com/marcfargas)! - Add `ToolBlockedError` and `safeRmSync` to the public API.
+
+  **`ToolBlockedError`** — a typed error class thrown when an extension hook blocks a mocked tool call. Use `instanceof ToolBlockedError` to distinguish hook blocks from real execution errors in tests, instead of matching error message strings.
+
+  ```ts
+  import { ToolBlockedError } from "@marcfargas/pi-test-harness";
+
+  // Test that a blocked call doesn't crash, just records an error
+  const result = t.events.toolResultsFor("bash")[0];
+  expect(result.isError).toBe(true);
+
+  // Or catch it where propagateErrors is relevant
+  try {
+    await t.run(when("Try write", [calls("bash", {}), says("Done.")]));
+  } catch (err) {
+    if (err instanceof ToolBlockedError) {
+      // Expected — extension hook blocked the call
+    } else throw err;
+  }
+  ```
+
+  **`safeRmSync(filePath)`** — removes a file, swallowing `EPERM` and `EBUSY` errors only. Intended for `afterEach` cleanup of extension-owned SQLite files on Windows, where `session_shutdown` (which closes DB connections) fires at process exit rather than on `session.dispose()`.
+
+  ```ts
+  import { safeRmSync } from "@marcfargas/pi-test-harness";
+
+  afterEach(() => {
+    t?.dispose();
+    safeRmSync(dbPath);
+    safeRmSync(dbPath + "-wal");
+    safeRmSync(dbPath + "-shm");
+  });
+  ```
+
+### Patch Changes
+
+- [#3](https://github.com/marcfargas/pi-test-harness/pull/3) [`225e123`](https://github.com/marcfargas/pi-test-harness/commit/225e123ce6ce2790f739aa3083ad1add3f09e752) Thanks [@marcfargas](https://github.com/marcfargas)! - Fix tool event collection and block detection.
+
+  - **`toolResultsFor()` / `toolCallsFor()` now work without `mockTools`**. Previously these always returned `[]` when `mockTools` was not configured, because real tools were not wrapped for collection. Now all tools are always wrapped, regardless of whether mocks are configured.
+
+  - **Fix double-wrapping on multiple `run()` calls**. Calling `run()` twice in one test would wrap already-wrapped tools again, causing double-counted results and incorrect step numbers. The original tools are now captured once at session creation and reused on every `run()` call.
+
+  - **Fix block detection regression in `wrapForCollection`**. The `ToolBlockedError` class is thrown by the harness's own mock block path, but pi's native hook chain throws a plain `Error` with a message. Block detection now uses a hybrid check (`instanceof ToolBlockedError` + message fallback) so both paths are correctly classified as blocks rather than test failures.
+
 ## 0.4.1
 
 ### Patch Changes
