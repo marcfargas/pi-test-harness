@@ -1,6 +1,6 @@
 {
   "name": "@marcfargas/pi-test-harness",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Test harness for pi extensions — in-process session testing, package install verification, and subprocess mocking",
   "author": "Marc Fargas",
   "license": "MIT",
