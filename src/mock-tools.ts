@@ -15,6 +15,42 @@ import type { MockToolHandler, ToolResult, ToolResultRecord } from "./types.js";
 import type { PlaybookState } from "./playbook.js";
 import { formatToolError } from "./diagnostics.js";
 
+/**
+ * Thrown when an extension hook blocks a tool call.
+ * Used instead of plain Error so wrapForCollection can reliably detect blocks
+ * without fragile message-string matching.
+ */
+export class ToolBlockedError extends Error {
+	readonly toolBlocked = true as const;
+
+	constructor(reason: string) {
+		super(reason);
+		this.name = "ToolBlockedError";
+	}
+}
+
+/**
+ * Returns true if `err` represents a hook-based tool block.
+ *
+ * Two sources produce block errors:
+ * 1. The harness's own mock path → throws `ToolBlockedError` (instanceof check).
+ * 2. Pi's native `wrapToolsWithExtensions` hook chain → throws a plain `Error`
+ *    with a message containing known block phrases. We keep message-string
+ *    fallback detection for these until pi exports a typed error class.
+ */
+export function isBlockedError(err: unknown): boolean {
+	if (err instanceof ToolBlockedError) return true;
+	if (err instanceof Error) {
+		const msg = err.message;
+		return (
+			msg.includes("blocked") ||
+			msg.includes("Plan mode") ||
+			msg.includes("WRITE operation")
+		);
+	}
+	return false;
+}
+
 function normalizeMockResult(
 	handler: MockToolHandler,
 	params: Record<string, unknown>,
@@ -99,9 +135,9 @@ export function interceptToolExecution(
 						toolResults.push(record);
 						fireThenCallback(playbookState, toolCallId, record);
 
-						// Match pi's wrapper behavior: throw an Error so the agent
-						// loop records isError: true in the tool_execution_end event
-						throw new Error(reason);
+						// Use ToolBlockedError so wrapForCollection can detect blocks
+						// without string matching
+						throw new ToolBlockedError(reason);
 					}
 				}
 
@@ -207,9 +243,7 @@ function wrapForCollection(
 
 				// Check if this was an extension hook blocking the tool
 				// (not a real execution error — don't propagate as test failure)
-				const isBlockedByHook = errMsg.includes("blocked")
-					|| errMsg.includes("Plan mode")
-					|| errMsg.includes("WRITE operation");
+				const isBlockedByHook = isBlockedError(err);
 
 				const record: ToolResultRecord = {
 					step,

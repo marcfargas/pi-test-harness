@@ -113,7 +113,11 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 				// Check if this was a block (look at the most recent tool call)
 				const lastCall = events.toolCalls[events.toolCalls.length - 1];
 				if (lastCall && lastCall.toolName === event.toolName) {
-					// Check if the error message indicates blocking
+					// Detect block via result text. We cannot use isBlockedError() here
+					// because the AgentSessionEvent only carries the serialized result
+					// content — not the original Error object. Pi does not yet export a
+					// typed block error, so message-string matching is the only option
+					// at this layer. Keep in sync with isBlockedError() in mock-tools.ts.
 					const resultText = event.result?.content
 						?.filter((c: any) => c.type === "text")
 						?.map((c: any) => c.text)
@@ -146,6 +150,9 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 		},
 	});
 
+	// Capture original tools before any wrapping — used in run() to avoid double-wrap
+	const originalTools: AgentTool[] = [...((session.agent as any).state.tools as AgentTool[])];
+
 	const testSession: TestSession = {
 		session,
 		cwd,
@@ -167,20 +174,19 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 			(session.agent as any).streamFn = streamFn;
 			(session.agent as any).getApiKey = () => "test-key";
 
-			// Intercept tool execution for mockTools
-			if (options.mockTools) {
-				const currentTools = (session.agent as any).state.tools as AgentTool[];
-				const runner = session.extensionRunner;
-				const interceptedTools = interceptToolExecution(
-					currentTools,
-					options.mockTools,
-					events.toolResults,
-					state,
-					propagateErrors,
-					runner,
-				);
-				(session.agent as any).setTools(interceptedTools);
-			}
+			// Always wrap tools for event collection; if no mocks configured, pass empty map
+			const effectiveMockTools = options.mockTools ?? {};
+			const currentTools = originalTools;
+			const runner = session.extensionRunner;
+			const interceptedTools = interceptToolExecution(
+				currentTools,
+				effectiveMockTools,
+				events.toolResults,
+				state,
+				propagateErrors,
+				runner,
+			);
+			(session.agent as any).setTools(interceptedTools);
 
 			// Run each turn
 			for (const turn of turns) {
@@ -199,6 +205,15 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 			}
 		},
 
+		/**
+		 * Dispose the test session and clean up the temp directory (if owned).
+		 *
+		 * Note: `session.dispose()` does NOT fire `session_shutdown`. That event is
+		 * dispatched by pi at Node.js process exit. Extensions that open resources in
+		 * `session_start` (e.g., SQLite databases) keep those resources open until the
+		 * process exits. Use `safeRmSync` when cleaning up extension-owned files in
+		 * afterEach hooks on Windows to avoid EPERM errors.
+		 */
 		dispose(): void {
 			session.dispose();
 			if (ownsTmpDir && fs.existsSync(cwd)) {

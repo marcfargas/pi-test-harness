@@ -34,3 +34,9 @@ export type {
 	Turn,
 	PlaybookAction,
 } from "./types.js";
+
+// Errors
+export { ToolBlockedError } from "./mock-tools.js";
+
+// Utilities
+export { safeRmSync } from "./utils.js";

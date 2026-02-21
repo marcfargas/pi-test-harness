@@ -490,6 +490,33 @@ interface MockUIConfig {
 }
 ```
 
+### `ToolBlockedError`
+
+Thrown (and exported) when an extension hook blocks a mocked tool call. Use with `instanceof` to assert that a specific tool was blocked rather than crashed:
+
+```typescript
+import { ToolBlockedError } from "@marcfargas/pi-test-harness";
+
+// Verify a tool was blocked (not just errored)
+const result = t.events.toolResultsFor("bash")[0];
+expect(result.isError).toBe(true);
+
+// Or catch it in error-propagation scenarios
+try {
+  await t.run(when("Try write", [calls("bash", { command: "rm -rf /" }), says("Done.")]));
+} catch (err) {
+  if (err instanceof ToolBlockedError) {
+    // Expected — extension hook blocked the call
+  } else {
+    throw err; // real error
+  }
+}
+```
+
+### `safeRmSync(filePath)`
+
+Removes a file, swallowing `EPERM`/`EBUSY` errors only. Intended for `afterEach` cleanup of extension-owned SQLite files on Windows. See [Platform Notes](#platform-notes).
+
 ## Real-World Example: Testing pi-planner
 
 Testing an extension that registers 8 tools, blocks writes in plan mode, and manages plan lifecycle:
@@ -538,6 +565,32 @@ describe("pi-planner", () => {
   });
 });
 ```
+
+## Platform Notes
+
+### Windows + SQLite (EPERM in afterEach)
+
+`session.dispose()` does **not** fire `session_shutdown`. That event fires at Node.js process exit. Extensions that open SQLite databases in `session_start` (e.g., brainiac, memory extensions) keep those files locked for the entire test runner lifetime.
+
+On Windows, this means `rmSync(dbPath)` in `afterEach` throws `EPERM`. Use `safeRmSync` instead:
+
+```typescript
+import { safeRmSync } from "@marcfargas/pi-test-harness";
+
+afterEach(() => {
+  // Dispose session first, then attempt file cleanup
+  t?.dispose();
+  safeRmSync(dbPath);
+  safeRmSync(dbPath + "-wal");
+  safeRmSync(dbPath + "-shm");
+});
+```
+
+Files are cleaned by the OS when the process exits. Use unique DB paths per test (e.g., `mkdtempSync` + test name) for isolation.
+
+`safeRmSync` only swallows `EPERM` and `EBUSY` — all other errors still propagate.
+
+---
 
 ## Design Philosophy
 
