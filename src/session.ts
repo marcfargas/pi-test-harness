@@ -146,6 +146,9 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 		},
 	});
 
+	// Capture original tools before any wrapping — used in run() to avoid double-wrap
+	const originalTools: AgentTool[] = [...((session.agent as any).state.tools as AgentTool[])];
+
 	const testSession: TestSession = {
 		session,
 		cwd,
@@ -167,20 +170,19 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 			(session.agent as any).streamFn = streamFn;
 			(session.agent as any).getApiKey = () => "test-key";
 
-			// Intercept tool execution for mockTools
-			if (options.mockTools) {
-				const currentTools = (session.agent as any).state.tools as AgentTool[];
-				const runner = session.extensionRunner;
-				const interceptedTools = interceptToolExecution(
-					currentTools,
-					options.mockTools,
-					events.toolResults,
-					state,
-					propagateErrors,
-					runner,
-				);
-				(session.agent as any).setTools(interceptedTools);
-			}
+			// Always wrap tools for event collection; if no mocks configured, pass empty map
+			const effectiveMockTools = options.mockTools ?? {};
+			const currentTools = originalTools;
+			const runner = session.extensionRunner;
+			const interceptedTools = interceptToolExecution(
+				currentTools,
+				effectiveMockTools,
+				events.toolResults,
+				state,
+				propagateErrors,
+				runner,
+			);
+			(session.agent as any).setTools(interceptedTools);
 
 			// Run each turn
 			for (const turn of turns) {
@@ -199,6 +201,15 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 			}
 		},
 
+		/**
+		 * Dispose the test session and clean up the temp directory (if owned).
+		 *
+		 * Note: `session.dispose()` does NOT fire `session_shutdown`. That event is
+		 * dispatched by pi at Node.js process exit. Extensions that open resources in
+		 * `session_start` (e.g., SQLite databases) keep those resources open until the
+		 * process exits. Use `safeRmSync` when cleaning up extension-owned files in
+		 * afterEach hooks on Windows to avoid EPERM errors.
+		 */
 		dispose(): void {
 			session.dispose();
 			if (ownsTmpDir && fs.existsSync(cwd)) {
