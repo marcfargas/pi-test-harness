@@ -15,6 +15,20 @@ import type { MockToolHandler, ToolResult, ToolResultRecord } from "./types.js";
 import type { PlaybookState } from "./playbook.js";
 import { formatToolError } from "./diagnostics.js";
 
+/**
+ * Thrown when an extension hook blocks a tool call.
+ * Used instead of plain Error so wrapForCollection can reliably detect blocks
+ * without fragile message-string matching.
+ */
+export class ToolBlockedError extends Error {
+	readonly toolBlocked = true as const;
+
+	constructor(reason: string) {
+		super(reason);
+		this.name = "ToolBlockedError";
+	}
+}
+
 function normalizeMockResult(
 	handler: MockToolHandler,
 	params: Record<string, unknown>,
@@ -99,9 +113,9 @@ export function interceptToolExecution(
 						toolResults.push(record);
 						fireThenCallback(playbookState, toolCallId, record);
 
-						// Match pi's wrapper behavior: throw an Error so the agent
-						// loop records isError: true in the tool_execution_end event
-						throw new Error(reason);
+						// Use ToolBlockedError so wrapForCollection can detect blocks
+						// without string matching
+						throw new ToolBlockedError(reason);
 					}
 				}
 
@@ -207,9 +221,7 @@ function wrapForCollection(
 
 				// Check if this was an extension hook blocking the tool
 				// (not a real execution error — don't propagate as test failure)
-				const isBlockedByHook = errMsg.includes("blocked")
-					|| errMsg.includes("Plan mode")
-					|| errMsg.includes("WRITE operation");
+				const isBlockedByHook = err instanceof ToolBlockedError;
 
 				const record: ToolResultRecord = {
 					step,
