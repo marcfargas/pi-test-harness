@@ -29,6 +29,28 @@ export class ToolBlockedError extends Error {
 	}
 }
 
+/**
+ * Returns true if `err` represents a hook-based tool block.
+ *
+ * Two sources produce block errors:
+ * 1. The harness's own mock path → throws `ToolBlockedError` (instanceof check).
+ * 2. Pi's native `wrapToolsWithExtensions` hook chain → throws a plain `Error`
+ *    with a message containing known block phrases. We keep message-string
+ *    fallback detection for these until pi exports a typed error class.
+ */
+export function isBlockedError(err: unknown): boolean {
+	if (err instanceof ToolBlockedError) return true;
+	if (err instanceof Error) {
+		const msg = err.message;
+		return (
+			msg.includes("blocked") ||
+			msg.includes("Plan mode") ||
+			msg.includes("WRITE operation")
+		);
+	}
+	return false;
+}
+
 function normalizeMockResult(
 	handler: MockToolHandler,
 	params: Record<string, unknown>,
@@ -221,7 +243,7 @@ function wrapForCollection(
 
 				// Check if this was an extension hook blocking the tool
 				// (not a real execution error — don't propagate as test failure)
-				const isBlockedByHook = err instanceof ToolBlockedError;
+				const isBlockedByHook = isBlockedError(err);
 
 				const record: ToolResultRecord = {
 					step,

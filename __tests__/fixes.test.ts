@@ -13,6 +13,7 @@ import { mkdtempSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createTestSession, when, calls, says, ToolBlockedError, safeRmSync } from "../src/index.js";
+import { _isLockedFileError } from "../src/utils.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -173,6 +174,70 @@ describe("ToolBlockedError", () => {
 	});
 });
 
+// ── Fix 3b: blocked tool integration ─────────────────────────────────────────
+
+describe("blocked tool classification in execution flow", () => {
+	it("mocked tool blocked by hook — recorded as error, test does not crash", async () => {
+		const t = await createTestSession({
+			extensionFactories: [
+				(pi: any) => {
+					// Block the custom tool via tool_call hook
+					pi.on("tool_call", async (event: any) => {
+						if (event.toolName === "my_blocked_tool") {
+							return { block: true, reason: "Tool execution was blocked by an extension" };
+						}
+					});
+					const { Type } = require("@sinclair/typebox");
+					pi.registerTool({
+						name: "my_blocked_tool",
+						label: "Blocked Tool",
+						description: "A tool that gets blocked",
+						parameters: Type.Object({}),
+						execute: async () => ({
+							content: [{ type: "text", text: "should not reach here" }],
+							details: {},
+						}),
+					});
+				},
+			],
+			// my_blocked_tool is mocked so the block fires through our interceptToolExecution path
+			mockTools: {
+				my_blocked_tool: "unreachable",
+				bash: "ok",
+				read: "ok",
+				write: "ok",
+				edit: "ok",
+			},
+			propagateErrors: true, // default — must NOT crash for hook blocks
+		});
+
+		// Should not throw even though the tool is blocked
+		await t.run(
+			when("Call it", [
+				calls("my_blocked_tool", {}),
+				says("Done."),
+			]),
+		);
+
+		const results = t.events.toolResultsFor("my_blocked_tool");
+		expect(results).toHaveLength(1);
+		expect(results[0].isError).toBe(true);
+		expect(results[0].text).toContain("blocked");
+
+		t.dispose();
+	});
+
+	it("ToolBlockedError is instanceof-checkable from a caught tool result", async () => {
+		// Verify that the error thrown in the mock path is the right type
+		// (guards against accidental plain-Error regression)
+		const err = new ToolBlockedError("some reason");
+		expect(err instanceof ToolBlockedError).toBe(true);
+		// A plain Error from pi's native hook would NOT pass this check
+		const plainErr = new Error("Tool execution was blocked by an extension");
+		expect(plainErr instanceof ToolBlockedError).toBe(false);
+	});
+});
+
 // ── Fix 4: safeRmSync ─────────────────────────────────────────────────────────
 
 describe("safeRmSync", () => {
@@ -203,5 +268,28 @@ describe("safeRmSync", () => {
 		expect(() => safeRmSync(file)).not.toThrow(); // second call: file gone, no throw
 
 		try { rmSync(dir, { recursive: true, force: true }); } catch { /* ignore */ }
+	});
+
+	// vi.spyOn cannot mock native ESM node: modules (namespace not configurable).
+	// Instead we test the error-filtering predicate directly — it's the only
+	// logic safeRmSync adds on top of rmSync.
+	it("_isLockedFileError: EPERM is a lock error", () => {
+		const err = Object.assign(new Error("EPERM: operation not permitted"), { code: "EPERM" });
+		expect(_isLockedFileError(err)).toBe(true);
+	});
+
+	it("_isLockedFileError: EBUSY is a lock error", () => {
+		const err = Object.assign(new Error("EBUSY: resource busy or locked"), { code: "EBUSY" });
+		expect(_isLockedFileError(err)).toBe(true);
+	});
+
+	it("_isLockedFileError: EISDIR is NOT a lock error (safeRmSync re-throws it)", () => {
+		const err = Object.assign(new Error("EISDIR: illegal operation on a directory"), { code: "EISDIR" });
+		expect(_isLockedFileError(err)).toBe(false);
+	});
+
+	it("_isLockedFileError: EACCES is NOT a lock error", () => {
+		const err = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+		expect(_isLockedFileError(err)).toBe(false);
 	});
 });

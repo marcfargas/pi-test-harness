@@ -113,7 +113,11 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 				// Check if this was a block (look at the most recent tool call)
 				const lastCall = events.toolCalls[events.toolCalls.length - 1];
 				if (lastCall && lastCall.toolName === event.toolName) {
-					// Check if the error message indicates blocking
+					// Detect block via result text. We cannot use isBlockedError() here
+					// because the AgentSessionEvent only carries the serialized result
+					// content — not the original Error object. Pi does not yet export a
+					// typed block error, so message-string matching is the only option
+					// at this layer. Keep in sync with isBlockedError() in mock-tools.ts.
 					const resultText = event.result?.content
 						?.filter((c: any) => c.type === "text")
 						?.map((c: any) => c.text)

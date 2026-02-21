@@ -25,11 +25,22 @@ import { rmSync } from "node:fs";
  * Files are cleaned up by the OS when the process exits (or on next run).
  * Using unique DB paths per test ensures isolation.
  */
+/**
+ * Returns true for errno codes that represent a Windows file-lock condition.
+ * Exported for unit testing — not part of the public API contract.
+ * @internal
+ */
+export function _isLockedFileError(err: unknown): boolean {
+	const code = (err as NodeJS.ErrnoException).code;
+	return code === "EPERM" || code === "EBUSY";
+}
+
 export function safeRmSync(filePath: string): void {
-    try {
-        rmSync(filePath, { force: true });
-    } catch {
-        // EPERM / EBUSY: file may be locked (e.g., SQLite WAL file on Windows).
-        // The lock is released at process exit — this is expected and safe to ignore.
-    }
+	try {
+		rmSync(filePath, { force: true });
+	} catch (err) {
+		// Only swallow Windows file-lock errors. Everything else (permissions,
+		// bad path type, disk full) should still propagate so failures are visible.
+		if (!_isLockedFileError(err)) throw err;
+	}
 }
