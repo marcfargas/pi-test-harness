@@ -18,9 +18,9 @@ npm install --save-dev @marcfargas/pi-test-harness
 
 ### Peer dependencies
 
-- `@mariozechner/pi-coding-agent` >= 0.50.0
-- `@mariozechner/pi-ai`
-- `@mariozechner/pi-agent-core`
+- `@earendil-works/pi-coding-agent` >= 0.74.0
+- `@earendil-works/pi-ai` >= 0.74.0
+- `@earendil-works/pi-agent-core` >= 0.74.0
 
 ## Quick Start
 

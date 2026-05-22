@@ -1,5 +1,5 @@
 // Minimal pi extension that registers one tool
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 
 export default function (pi) {
 	pi.registerTool({

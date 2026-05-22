@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createPlaybookStreamFn, when, calls, says } from "../src/playbook.js";
-import type { Model, Context } from "@mariozechner/pi-ai";
+import type { Model, Context } from "@earendil-works/pi-ai";
 
 function mockModel(): Model<any> {
 	return {

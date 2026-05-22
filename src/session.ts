@@ -18,9 +18,9 @@ import {
 	SessionManager,
 	SettingsManager,
 	type AgentSessionEvent,
-} from "@mariozechner/pi-coding-agent";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
-import { getModel } from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-coding-agent";
+import type { AgentTool } from "@earendil-works/pi-agent-core";
+import { getModel } from "@earendil-works/pi-ai";
 import { createPlaybookStreamFn, type PlaybookState } from "./playbook.js";
 import { interceptToolExecution } from "./mock-tools.js";
 import { createMockUIContext } from "./mock-ui.js";
@@ -75,6 +75,9 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 	if (origModelRegistry) {
 		origModelRegistry.getApiKey = async () => "test-key";
 		origModelRegistry.getApiKeyForProvider = async () => "test-key";
+		origModelRegistry.getApiKeyAndHeaders = async () => ({ ok: true, apiKey: "test-key", headers: {} });
+		origModelRegistry.hasConfiguredAuth = () => true;
+		origModelRegistry.isUsingOAuth = () => false;
 	}
 
 	// Check for extension load errors
@@ -109,6 +112,11 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 		}
 
 		if (event.type === "tool_execution_end") {
+			const resultText = event.result?.content
+				?.filter((c: any) => c.type === "text")
+				?.map((c: any) => c.text)
+				?.join("\n") ?? "";
+
 			if (event.isError) {
 				// Check if this was a block (look at the most recent tool call)
 				const lastCall = events.toolCalls[events.toolCalls.length - 1];
@@ -118,15 +126,27 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 					// content — not the original Error object. Pi does not yet export a
 					// typed block error, so message-string matching is the only option
 					// at this layer. Keep in sync with isBlockedError() in mock-tools.ts.
-					const resultText = event.result?.content
-						?.filter((c: any) => c.type === "text")
-						?.map((c: any) => c.text)
-						?.join("\n") ?? "";
 					if (resultText.includes("blocked") || resultText.includes("Plan mode")) {
 						lastCall.blocked = true;
 						lastCall.blockReason = resultText;
 					}
 				}
+			}
+
+			// Recent pi versions can block a tool before the wrapped tool.execute()
+			// runs. In that path mock-tools.ts cannot record the result itself, so
+			// mirror the serialized session event if no wrapper record exists yet.
+			if (!events.toolResults.some((r) => r.toolCallId === event.toolCallId)) {
+				events.toolResults.push({
+					step: currentStep,
+					toolName: event.toolName,
+					toolCallId: event.toolCallId,
+					text: resultText,
+					content: event.result?.content ?? [],
+					isError: event.isError,
+					details: event.result?.details,
+					mocked: false,
+				});
 			}
 		}
 
@@ -186,7 +206,12 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 				propagateErrors,
 				runner,
 			);
-			(session.agent as any).setTools(interceptedTools);
+			const agent = session.agent as any;
+			if (typeof agent.setTools === "function") {
+				agent.setTools(interceptedTools);
+			} else {
+				agent.state.tools = interceptedTools;
+			}
 
 			// Run each turn
 			for (const turn of turns) {
