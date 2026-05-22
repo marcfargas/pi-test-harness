@@ -1,5 +1,13 @@
 # @marcfargas/pi-test-harness
 
+## 0.6.0
+
+### Minor Changes
+
+- [`10eb126`](https://github.com/marcfargas/pi-test-harness/commit/10eb1268fb82eb567ee8ba3e47fb942c5ee40795) Thanks [@marcfargas](https://github.com/marcfargas)! - Migrate the harness to the current `@earendil-works/*` Pi packages and require Pi `>=0.74.0`.
+
+  This drops direct support for the deprecated `@mariozechner/*` Pi package names, updates the harness for current Pi session/tool APIs, and adds CI coverage across Linux and Windows against the latest patch releases of the last two supported Pi minor lines.
+
 ## 0.5.0
 
 ### Minor Changes
