@@ -1,5 +1,11 @@
 # @marcfargas/pi-test-harness
 
+## 0.6.1
+
+### Patch Changes
+
+- [`0236306`](https://github.com/marcfargas/pi-test-harness/commit/02363061622b5255fe2905867ec68e7bc0270d8b) Thanks [@marcfargas](https://github.com/marcfargas)! - Fix release metadata after the 0.6.0 migration release.
+
 ## 0.6.0
 
 ### Minor Changes
