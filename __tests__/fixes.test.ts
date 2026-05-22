@@ -20,7 +20,7 @@ import { _isLockedFileError } from "../src/utils.js";
 /** Registers a simple counter tool via extensionFactories. */
 function counterToolFactory(hits: { count: number }) {
 	return (pi: any) => {
-		const { Type } = require("@sinclair/typebox");
+		const { Type } = require("typebox");
 		pi.registerTool({
 			name: "counter_tool",
 			label: "Counter",
@@ -187,7 +187,7 @@ describe("blocked tool classification in execution flow", () => {
 							return { block: true, reason: "Tool execution was blocked by an extension" };
 						}
 					});
-					const { Type } = require("@sinclair/typebox");
+					const { Type } = require("typebox");
 					pi.registerTool({
 						name: "my_blocked_tool",
 						label: "Blocked Tool",

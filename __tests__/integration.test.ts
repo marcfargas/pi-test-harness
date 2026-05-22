@@ -111,7 +111,7 @@ describe("TestSession integration", () => {
 		const t = await createTestSession({
 			extensionFactories: [
 				(pi: any) => {
-					const { Type } = require("@sinclair/typebox");
+					const { Type } = require("typebox");
 					pi.registerTool({
 						name: "my_tool",
 						label: "My Tool",
@@ -156,7 +156,7 @@ describe("TestSession integration", () => {
 		const t = await createTestSession({
 			extensionFactories: [
 				(pi: any) => {
-					const { Type } = require("@sinclair/typebox");
+					const { Type } = require("typebox");
 					pi.registerTool({
 						name: "create_thing",
 						label: "Create",
@@ -213,7 +213,7 @@ describe("TestSession integration", () => {
 		const t = await createTestSession({
 			extensionFactories: [
 				(pi: any) => {
-					const { Type } = require("@sinclair/typebox");
+					const { Type } = require("typebox");
 					pi.registerTool({
 						name: "ask_confirm",
 						label: "Ask",

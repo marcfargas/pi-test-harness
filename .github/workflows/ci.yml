@@ -10,33 +10,45 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  lint:
+  verify:
+    name: Lint, unit, build, package smoke
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
-      - run: npm install
-      - run: npm run build
+      - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npm audit
+      - run: npm run test:consumer
 
-  test:
-    needs: lint
+  integration:
+    name: Integration (${{ matrix.os }}, Node ${{ matrix.node-version }}, Pi ${{ matrix.pi-version }})
+    needs: verify
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
         node-version: [22, 24]
+        pi-version: [0.74.2, 0.75.4]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-      - run: npm install
+      - run: npm ci
+      - name: Install Pi ${{ matrix.pi-version }}
+        run: npm install --no-save @earendil-works/pi-agent-core@${{ matrix.pi-version }} @earendil-works/pi-ai@${{ matrix.pi-version }} @earendil-works/pi-coding-agent@${{ matrix.pi-version }}
       - run: npm run build
-      - run: npm test
+      - run: npm run test:integration

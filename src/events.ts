@@ -2,8 +2,8 @@
  * Event collection — passively collects all events during a test run.
  */
 
-import type { AgentSessionEvent } from "@mariozechner/pi-coding-agent";
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
 import type { TestEvents, ToolCallRecord, ToolResultRecord, UICallRecord } from "./types.js";
 
 export function createEventCollector(): TestEvents {

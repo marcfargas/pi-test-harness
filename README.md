@@ -1,6 +1,6 @@
 # @marcfargas/pi-test-harness
 
-Test harness for [pi](https://github.com/mariozechner/pi-coding-agent) extensions — in-process session testing with playbook-driven model mocking, package install verification, and subprocess mocking.
+Test harness for [pi](https://github.com/earendil-works/pi-coding-agent) extensions — in-process session testing with playbook-driven model mocking, package install verification, and subprocess mocking.
 
 ## Why
 
@@ -18,9 +18,9 @@ npm install --save-dev @marcfargas/pi-test-harness
 
 ### Peer dependencies
 
-- `@mariozechner/pi-coding-agent` >= 0.50.0
-- `@mariozechner/pi-ai`
-- `@mariozechner/pi-agent-core`
+- `@earendil-works/pi-coding-agent` >= 0.74.0
+- `@earendil-works/pi-ai` >= 0.74.0
+- `@earendil-works/pi-agent-core` >= 0.74.0
 
 ## Quick Start
 
@@ -598,7 +598,23 @@ Files are cleaned by the OS when the process exits. Use unique DB paths per test
 
 The harness minimizes substitution. Extensions load through pi's real loader (jiti). Tools go through pi's real wrapping pipeline (`wrapToolsWithExtensions`). Hooks fire through pi's real `ExtensionRunner`. Events flow through pi's real event system.
 
-Only the LLM boundary is replaced — because that's the one thing you **can't** run in a test.
+Only the LLM boundary is replaced — because that's the one thing you **can't** run in a deterministic test. Real-provider smoke tests belong in the application or extension that owns the provider configuration, not in this harness.
+
+## Testing Scope
+
+CI runs in two stages:
+
+1. **Verify** on Linux/Node 24: lint, typecheck, unit tests, build, audit, and a packed-consumer import smoke test.
+2. **Integration matrix** after verify passes: Linux + Windows, Node 22 + 24, and the latest patch of the last two supported Pi minor lines (`0.74.x` and `0.75.x`).
+
+The unit suite covers the playbook DSL and subprocess `createMockPi()` shim. The integration suite covers real in-process Pi sessions, extension loading, tool registration/execution, hooks, UI mocking, sandbox package install verification, regression cases, and Windows-safe cleanup behavior.
+
+Known intentional gaps:
+
+- No real LLM/provider calls; the harness replaces the model boundary by design.
+- No compatibility testing for the deprecated `@mariozechner/*` Pi packages.
+- Concurrent/parallel tool execution is not yet deeply exercised. Today the playbook emits one tool call per assistant message, which is deterministic and good for most extension tests. To test true Pi parallelism, the harness should grow a grouped/batched call action that emits multiple `toolCall` blocks in one assistant message, then assert result collection by `toolCallId` rather than completion order.
+- Edge cases still worth adding over time: command/input/before-agent hooks, tool-result hook mutation, multiple extensions interacting, install failure modes, malformed package metadata, ESM/CJS fixture packages, cleanup failure paths, and concurrent `createMockPi()` subprocess consumers.
 
 ## License
 

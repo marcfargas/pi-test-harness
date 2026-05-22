@@ -12,7 +12,7 @@ import {
 	type Context,
 	type Model,
 	type SimpleStreamOptions,
-} from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-ai";
 import type { PlaybookAction, Turn, ToolResultRecord } from "./types.js";
 import { formatPlaybookDiagnostic } from "./diagnostics.js";
 
