@@ -20,7 +20,7 @@ import {
 	type AgentSessionEvent,
 } from "@earendil-works/pi-coding-agent";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { getModel } from "@earendil-works/pi-ai";
+import { getBuiltinModel } from "@earendil-works/pi-ai/providers/all";
 import { createPlaybookStreamFn, type PlaybookState } from "./playbook.js";
 import { interceptToolExecution } from "./mock-tools.js";
 import { createMockUIContext } from "./mock-ui.js";
@@ -56,7 +56,7 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 	await loader.reload();
 
 	// Use a real model definition (never actually called — playbook replaces streamFn)
-	const playbookModel = getModel("openai", "gpt-4o");
+	const playbookModel = getBuiltinModel("openai", "gpt-4o");
 
 	// Create real session with in-memory persistence
 	const { session, extensionsResult } = await createAgentSession({
@@ -70,14 +70,22 @@ export async function createTestSession(options: TestSessionOptions = {}): Promi
 
 	// Override getApiKey to bypass real auth checks (on both agent and session)
 	(session.agent as any).getApiKey = async () => "test-key";
-	// The session also validates via _modelRegistry.getApiKey — patch it
-	const origModelRegistry = (session as any)._modelRegistry;
-	if (origModelRegistry) {
-		origModelRegistry.getApiKey = async () => "test-key";
-		origModelRegistry.getApiKeyForProvider = async () => "test-key";
-		origModelRegistry.getApiKeyAndHeaders = async () => ({ ok: true, apiKey: "test-key", headers: {} });
-		origModelRegistry.hasConfiguredAuth = () => true;
-		origModelRegistry.isUsingOAuth = () => false;
+
+	const modelRuntime = (session as any)._modelRuntime;
+	if (modelRuntime) {
+		modelRuntime.hasConfiguredAuth = () => true;
+		modelRuntime.checkAuth = async () => ({ type: "apiKey", apiKey: "test-key" });
+		modelRuntime.getAuth = async () => ({ auth: { apiKey: "test-key" }, env: {} });
+		modelRuntime.isUsingOAuth = () => false;
+	}
+
+	const legacyModelRegistry = (session as any)._modelRegistry;
+	if (legacyModelRegistry) {
+		legacyModelRegistry.getApiKey = async () => "test-key";
+		legacyModelRegistry.getApiKeyForProvider = async () => "test-key";
+		legacyModelRegistry.getApiKeyAndHeaders = async () => ({ ok: true, apiKey: "test-key", headers: {} });
+		legacyModelRegistry.hasConfiguredAuth = () => true;
+		legacyModelRegistry.isUsingOAuth = () => false;
 	}
 
 	// Check for extension load errors

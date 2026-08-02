@@ -40,7 +40,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         node-version: [22, 24]
-        pi-version: [0.74.2, 0.75.4]
+        pi-version: [0.74.2, 0.75.4, 0.80.10]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
